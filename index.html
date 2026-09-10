@@ -1,14 +1,817 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#111827" />
-    <meta name="description" content="Local, privacy-first V2Ray/Xray configuration parser and converter." />
-    <title>V2Ray Config Studio</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>V2Ray Config Studio</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      background: #0f1115;
+      color: #fff;
+    }
+
+    .container {
+      width: min(1100px, 94%);
+      margin: 40px auto;
+    }
+
+    header {
+      margin-bottom: 25px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 32px;
+    }
+
+    .subtitle {
+      color: #9ca3af;
+      font-size: 15px;
+    }
+
+    .card {
+      background: #171a21;
+      border: 1px solid #292e39;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .label {
+      display: block;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 260px;
+      resize: vertical;
+      background: #0c0f14;
+      color: #e5e7eb;
+      border: 1px solid #303642;
+      border-radius: 12px;
+      padding: 16px;
+      font-family: Consolas, monospace;
+      font-size: 14px;
+      outline: none;
+      direction: ltr;
+      text-align: left;
+    }
+
+    textarea:focus {
+      border-color: #10a37f;
+    }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 11px 18px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      background: #10a37f;
+      color: white;
+    }
+
+    button:hover {
+      opacity: .9;
+    }
+
+    button.secondary {
+      background: #292e39;
+    }
+
+    button.danger {
+      background: #b42318;
+    }
+
+    select {
+      background: #0c0f14;
+      color: white;
+      border: 1px solid #303642;
+      padding: 10px;
+      border-radius: 9px;
+      margin-right: 8px;
+    }
+
+    .status {
+      margin-top: 15px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #10151c;
+      color: #9ca3af;
+    }
+
+    .success {
+      color: #5ee7b7;
+    }
+
+    .error {
+      color: #ff7777;
+    }
+
+    .node {
+      background: #101319;
+      border: 1px solid #292e39;
+      border-radius: 12px;
+      padding: 15px;
+      margin-top: 12px;
+    }
+
+    .node-title {
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    pre {
+      direction: ltr;
+      text-align: left;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #0b0e13;
+      padding: 15px;
+      border-radius: 10px;
+      overflow: auto;
+      max-height: 500px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 800px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .hint {
+      color: #737b89;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .counter {
+      margin-top: 10px;
+      color: #8b93a1;
+      font-size: 13px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <header>
+    <h1>⚡ V2Ray Config Studio</h1>
+    <div class="subtitle">
+      Parser & Converter for VLESS • VMess • Trojan • Shadowsocks • Hysteria2 • TUIC
+    </div>
+  </header>
+
+  <div class="card">
+
+    <label class="label">کانفیگ یا لینک خود را وارد کنید</label>
+
+    <textarea
+      id="configInput"
+      placeholder="مثال:
+
+vless://UUID@example.com:443?security=tls&type=ws&path=%2F#MyNode
+
+یا چند کانفیگ را در خطوط جدا وارد کنید...
+
+vless://...
+vmess://...
+trojan://...
+ss://..."
+    ></textarea>
+
+    <div class="hint">
+      می‌توانی یک یا چند لینک را هم‌زمان وارد کنی.
+    </div>
+
+    <div class="counter">
+      تعداد خطوط: <span id="lineCount">0</span>
+    </div>
+
+    <div class="buttons">
+
+      <button onclick="parseConfigs()">
+        🔍 Parse
+      </button>
+
+      <button class="secondary" onclick="document.getElementById('fileInput').click()">
+        📁 Import File
+      </button>
+
+      <button class="secondary" onclick="copyInput()">
+        📋 Copy
+      </button>
+
+      <button class="danger" onclick="clearAll()">
+        🗑 پاک کردن
+      </button>
+
+      <input
+        type="file"
+        id="fileInput"
+        accept=".txt,.json,.conf"
+        hidden
+        onchange="loadFile(event)"
+      >
+
+    </div>
+
+    <div id="status" class="status">
+      آماده دریافت کانفیگ...
+    </div>
+
+  </div>
+
+
+  <div class="grid">
+
+    <div class="card">
+      <label class="label">Nodeها</label>
+
+      <div id="nodes">
+        <div class="status">
+          هنوز کانفیگی پردازش نشده است.
+        </div>
+      </div>
+    </div>
+
+
+    <div class="card">
+
+      <label class="label">
+        خروجی
+      </label>
+
+      <select id="outputFormat">
+        <option value="xray">Xray JSON</option>
+        <option value="singbox">Sing-box JSON</option>
+        <option value="raw">Raw JSON</option>
+      </select>
+
+      <div class="buttons">
+        <button onclick="copyOutput()">
+          📋 Copy Output
+        </button>
+
+        <button onclick="downloadOutput()">
+          ⬇ Download
+        </button>
+      </div>
+
+      <pre id="output">{
+  "status": "waiting"
+}</pre>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<script>
+
+let parsedNodes = [];
+let outputData = null;
+
+
+/* =========================
+   Helpers
+========================= */
+
+function $(id) {
+  return document.getElementById(id);
+}
+
+
+function updateLineCount() {
+
+  const text = $("configInput").value.trim();
+
+  if (!text) {
+    $("lineCount").textContent = "0";
+    return;
+  }
+
+  $("lineCount").textContent =
+    text.split(/\r?\n/).filter(Boolean).length;
+}
+
+
+$("configInput").addEventListener(
+  "input",
+  updateLineCount
+);
+
+
+/* =========================
+   Protocol Detection
+========================= */
+
+function detectProtocol(link) {
+
+  const value = link.trim().toLowerCase();
+
+  if (value.startsWith("vless://"))
+    return "VLESS";
+
+  if (value.startsWith("vmess://"))
+    return "VMess";
+
+  if (value.startsWith("trojan://"))
+    return "Trojan";
+
+  if (value.startsWith("ss://"))
+    return "Shadowsocks";
+
+  if (
+    value.startsWith("hysteria2://") ||
+    value.startsWith("hy2://")
+  )
+    return "Hysteria2";
+
+  if (value.startsWith("tuic://"))
+    return "TUIC";
+
+  return "Unknown";
+}
+
+
+/* =========================
+   Basic URI Parser
+========================= */
+
+function parseURI(link) {
+
+  try {
+
+    const url = new URL(link);
+
+    const protocol =
+      url.protocol.replace(":", "").toLowerCase();
+
+    const params = {};
+
+    url.searchParams.forEach((value, key) => {
+      params[key] = value;
+    });
+
+    return {
+      protocol,
+      address: url.hostname,
+      port: url.port,
+      username: url.username,
+      password: url.password,
+      params,
+      remark: decodeURIComponent(
+        url.hash.replace(/^#/, "")
+      )
+    };
+
+  } catch (error) {
+
+    return {
+      error: error.message
+    };
+
+  }
+
+}
+
+
+/* =========================
+   Parse Configs
+========================= */
+
+function parseConfigs() {
+
+  const text = $("configInput").value.trim();
+
+  if (!text) {
+
+    setStatus(
+      "لطفاً حداقل یک کانفیگ وارد کنید.",
+      true
+    );
+
+    return;
+  }
+
+
+  const lines = text
+    .split(/\r?\n/)
+    .map(x => x.trim())
+    .filter(Boolean);
+
+
+  parsedNodes = [];
+
+
+  for (const line of lines) {
+
+    const protocol = detectProtocol(line);
+
+    if (protocol === "Unknown") {
+
+      parsedNodes.push({
+        protocol: "Unknown",
+        raw: line,
+        error: "Unsupported protocol"
+      });
+
+      continue;
+    }
+
+
+    const parsed = parseURI(line);
+
+
+    parsedNodes.push({
+      protocol,
+      ...parsed,
+      raw: line
+    });
+
+  }
+
+
+  renderNodes();
+  generateOutput();
+
+
+  const valid =
+    parsedNodes.filter(
+      x => !x.error
+    ).length;
+
+
+  setStatus(
+    `✓ ${valid} کانفیگ با موفقیت پردازش شد.`,
+    false
+  );
+
+}
+
+
+/* =========================
+   Render Nodes
+========================= */
+
+function renderNodes() {
+
+  const container = $("nodes");
+
+  container.innerHTML = "";
+
+
+  if (!parsedNodes.length) {
+
+    container.innerHTML =
+      `<div class="status">هیچ Nodeای وجود ندارد.</div>`;
+
+    return;
+  }
+
+
+  parsedNodes.forEach((node, index) => {
+
+    const element =
+      document.createElement("div");
+
+    element.className = "node";
+
+
+    element.innerHTML = `
+
+      <div class="node-title">
+        ${index + 1}. ${escapeHTML(
+          node.remark || "Unnamed Node"
+        )}
+      </div>
+
+      <div>
+        Protocol:
+        <b>${escapeHTML(node.protocol)}</b>
+      </div>
+
+      <div>
+        Server:
+        <b>${escapeHTML(node.address || "-")}</b>
+      </div>
+
+      <div>
+        Port:
+        <b>${escapeHTML(node.port || "-")}</b>
+      </div>
+
+      ${
+        node.error
+          ? `<div class="error">
+               ⚠ ${escapeHTML(node.error)}
+             </div>`
+          : ""
+      }
+
+    `;
+
+
+    container.appendChild(element);
+
+  });
+
+}
+
+
+/* =========================
+   Output
+========================= */
+
+function generateOutput() {
+
+  const format =
+    $("outputFormat").value;
+
+
+  if (format === "raw") {
+
+    outputData = parsedNodes;
+
+  } else if (format === "xray") {
+
+    outputData = {
+
+      log: {
+        loglevel: "warning"
+      },
+
+      inbounds: [],
+
+      outbounds: parsedNodes.map(
+        (node, index) => ({
+
+          tag:
+            node.remark ||
+            `proxy-${index + 1}`,
+
+          protocol:
+            node.protocol.toLowerCase(),
+
+          server:
+            node.address,
+
+          port:
+            Number(node.port) || 443
+
+        })
+      )
+
+    };
+
+  } else if (format === "singbox") {
+
+    outputData = {
+
+      outbounds: parsedNodes.map(
+        (node, index) => ({
+
+          type:
+            node.protocol.toLowerCase(),
+
+          tag:
+            node.remark ||
+            `proxy-${index + 1}`,
+
+          server:
+            node.address,
+
+          server_port:
+            Number(node.port) || 443
+
+        })
+      )
+
+    };
+
+  }
+
+
+  $("output").textContent =
+    JSON.stringify(
+      outputData,
+      null,
+      2
+    );
+
+}
+
+
+$("outputFormat").addEventListener(
+  "change",
+  generateOutput
+);
+
+
+/* =========================
+   File Import
+========================= */
+
+function loadFile(event) {
+
+  const file =
+    event.target.files[0];
+
+  if (!file)
+    return;
+
+
+  const reader =
+    new FileReader();
+
+
+  reader.onload = function(e) {
+
+    $("configInput").value =
+      e.target.result;
+
+    updateLineCount();
+    parseConfigs();
+
+  };
+
+
+  reader.readAsText(file);
+
+}
+
+
+/* =========================
+   Clipboard
+========================= */
+
+async function copyInput() {
+
+  const text =
+    $("configInput").value;
+
+  if (!text)
+    return;
+
+  await navigator.clipboard.writeText(text);
+
+  setStatus(
+    "✓ کانفیگ‌ها کپی شدند."
+  );
+
+}
+
+
+async function copyOutput() {
+
+  const text =
+    $("output").textContent;
+
+  await navigator.clipboard.writeText(text);
+
+  setStatus(
+    "✓ خروجی کپی شد."
+  );
+
+}
+
+
+/* =========================
+   Download
+========================= */
+
+function downloadOutput() {
+
+  if (!outputData)
+    return;
+
+
+  const blob =
+    new Blob(
+      [
+        JSON.stringify(
+          outputData,
+          null,
+          2
+        )
+      ],
+      {
+        type: "application/json"
+      }
+    );
+
+
+  const url =
+    URL.createObjectURL(blob);
+
+
+  const a =
+    document.createElement("a");
+
+
+  a.href = url;
+  a.download = "config.json";
+
+  a.click();
+
+
+  URL.revokeObjectURL(url);
+
+}
+
+
+/* =========================
+   Clear
+========================= */
+
+function clearAll() {
+
+  $("configInput").value = "";
+
+  $("nodes").innerHTML =
+    `<div class="status">
+      هنوز کانفیگی پردازش نشده است.
+    </div>`;
+
+  $("output").textContent =
+    `{
+  "status": "waiting"
+}`;
+
+  parsedNodes = [];
+  outputData = null;
+
+  updateLineCount();
+
+  setStatus(
+    "آماده دریافت کانفیگ..."
+  );
+
+}
+
+
+/* =========================
+   Status
+========================= */
+
+function setStatus(message, error = false) {
+
+  $("status").className =
+    error
+      ? "status error"
+      : "status success";
+
+  $("status").textContent =
+    message;
+
+}
+
+
+/* =========================
+   Security
+========================= */
+
+function escapeHTML(value) {
+
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+
+}
+
+</script>
+
+</body>
 </html>
